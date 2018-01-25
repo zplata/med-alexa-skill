@@ -1,22 +1,9 @@
 {
-  "name": "med-alexa-skill",
+  "name": "alexa-skill-kit-sdk-factskill",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/zplata/med-alexa-skill.git"
-  },
-  "author": "",
-  "license": "Apache-2.0",
-  "bugs": {
-    "url": "https://github.com/zplata/med-alexa-skill/issues"
-  },
-  "homepage": "https://github.com/zplata/med-alexa-skill#readme",
+  "private": true,
   "dependencies": {
-    "alexa-sdk": "^1.0.25"
+    "alexa-sdk": "^1.0.10",
+    "axios": "^0.17.1"
   }
 }
