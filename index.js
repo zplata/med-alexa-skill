@@ -43,7 +43,7 @@ const handlers = {
     let patientId;
     let patientName;
     if (slotValues && slotValues.person) {
-      switch (slotValues.person) {
+      switch (slotValues.person.resolved) {
         case 'Connie':
           patientId = '4342012';
           patientName = 'Connie';
