@@ -12,24 +12,24 @@
 
 const Alexa = require('alexa-sdk');
 const axios = require('axios');
-const appId = require('./alexa-stuff');
 
 const handlers = {
   'LaunchRequest': function () {
     console.log("in Launch Request");
     this.response.speak('Welcome to Patient Conditions. I can give you a list of conditions for a patient from the ' +
-      'Cerner sandbox. Who do you want conditions for?');
-    this.response.listen('Say a patient, like Timmy or Nancy.');
+      'Cerner sandbox. Ask me for a list of conditions for a patient in the SMART family.');
+    this.response.listen('Say I want a list of conditions for Timmy');
     this.emit(':responseReady');
   },
   'ConditionsIntent': function () {
     // delegate to Alexa to collect all the required slots
-    let isTestingWithSimulator = true; //autofill slots when using simulator, dialog management is only supported with a device
+    let isTestingWithSimulator = false; //autofill slots when using simulator, dialog management is only supported with a device
     let filledSlots = delegateSlotCollection.call(this, isTestingWithSimulator);
 
     // console.log("filled slots: " + JSON.stringify(filledSlots));
     // at this point, we know that all required slots are filled.
     let slotValues = getSlotValues(filledSlots);
+    console.log("FILLED SLOTS GETTING READY, ", slotValues);
 
     // console.log("slotValues: ", slotValues);
     // synonym the person said - slotValues.synonym
@@ -42,96 +42,99 @@ const handlers = {
     // with a randomized funny response and then exit the skill.
     let patientId;
     let patientName;
-    switch (slotValues.person.resolved) {
-      case 'Connie':
-        patientId = '4342012';
-        patientName = 'Connie';
-        break;
-      case 'Hailey':
-        patientId = '4342011';
-        patientName = 'Hailey';
-        break;
-      case 'Joe':
-        patientId = '4342010';
-        patientName = 'Joe';
-        break;
-      case 'Nancy':
-        patientId = '4342009';
-        patientName = 'Nancy';
-        break;
-      case 'Wilma':
-        patientId = '4342008';
-        patientName = 'Wilma';
-        break;
-      case 'Timmy':
-        patientId = '4342012';
-        patientName = 'Timmy';
-        break;
-      default:
-        patientId = '4342012';
-        patientName = 'Timmy';
-        break;
-    }
-
-    //Call the Cerner Ignite API
-    axios({
-      method: 'get',
-      url: `https://fhir-open.sandboxcerner.com/dstu2/0b8a0111-e8e6-4c26-a91c-5069cbc6b1ca/Condition?patient=${patientId}`,
-      headers: {
-        'Accept': 'application/json+fhir'
+    if (slotValues && slotValues.person) {
+      switch (slotValues.person) {
+        case 'Connie':
+          patientId = '4342012';
+          patientName = 'Connie';
+          break;
+        case 'Hailey':
+          patientId = '4342011';
+          patientName = 'Hailey';
+          break;
+        case 'Joe':
+          patientId = '4342010';
+          patientName = 'Joe';
+          break;
+        case 'Nancy':
+          patientId = '4342009';
+          patientName = 'Nancy';
+          break;
+        case 'Wilma':
+          patientId = '4342008';
+          patientName = 'Wilma';
+          break;
+        case 'Timmy':
+          patientId = '4342012';
+          patientName = 'Timmy';
+          break;
+        default:
+          return this.emit(':tell', 'Sorry, I dont know who that is. Try a different patient later.');
       }
-    }).then((result) => {
-      console.log(`FHIR Results for ${patientId}`, result);
-      if (result.data && result.data.entry && result.data.entry.length) {
-        const data = c.data.entry;
-        const codeObjArray = [];
-        const conditionTextArray = [];
-        data.filter((item) => {
-          const resource = item.resource;
-          const hasAppropriateCode = resource && resource.code && resource.code.coding &&
-            resource.code.coding[0] && resource.code.coding[0].code;
-          const isVerified = resource && resource.verificationStatus === 'confirmed';
-          if (hasAppropriateCode && isVerified) {
-            const isDuplicate =  codeObjArray.indexOf(resource.code.coding[0].code);
-            if (isDuplicate < 0) {
-              codeObjArray.push(resource.code.coding[0].code);
-              if (!(conditionTextArray.length > 5)) {
-                conditionTextArray.push(resource.code.coding[0].display);
+
+      //Call the Cerner Ignite API
+      axios({
+        method: 'get',
+        url: `https://fhir-open.sandboxcerner.com/dstu2/0b8a0111-e8e6-4c26-a91c-5069cbc6b1ca/Condition?patient=${patientId}`,
+        headers: {
+          'Accept': 'application/json+fhir'
+        }
+      }).then((result) => {
+        console.log(`FHIR Results for ${patientId}`, result);
+        if (result.data && result.data.entry && result.data.entry.length) {
+          const data = result.data.entry;
+          const codeObjArray = [];
+          const conditionTextArray = [];
+          data.filter((item) => {
+            const resource = item.resource;
+            const hasAppropriateCode = resource && resource.code && resource.code.coding &&
+              resource.code.coding[0] && resource.code.coding[0].code;
+            const isVerified = resource && resource.verificationStatus === 'confirmed';
+            if (hasAppropriateCode && isVerified) {
+              const isDuplicate =  codeObjArray.indexOf(resource.code.coding[0].code);
+              if (isDuplicate < 0) {
+                codeObjArray.push(resource.code.coding[0].code);
+                if (!(conditionTextArray.length > 5)) {
+                  conditionTextArray.push(resource.code.coding[0].display);
+                }
+                return true;
               }
-              return true;
+              return false;
             }
             return false;
-          }
-          return false;
-        });
+          });
 
-        let message = '';
-        if (conditionTextArray.length > 0) {
-          if (conditionTextArray.length === 1) {
-            message = `For ${patientName}, the only condition I found was `;
-          } else {
-            message = `I found the following conditions for ${patientName}: `;
-          }
-          for (let i = 0; i < conditionTextArray.length; i+=1) {
-            if (i === conditionTextArray - 1 && conditionTextArray.length > 1) {
-              message += `and ${conditionTextArray[i]}`;
-            } else if (i === conditionTextArray - 1 && conditionTextArray.length === 1) {
-              message += conditionTextArray[i];
+          let message = '';
+          if (conditionTextArray.length > 0) {
+            if (conditionTextArray.length === 1) {
+              message = `For ${patientName}, the only condition I found was `;
             } else {
-              message += `${conditionTextArray[i]}, `;
+              message = `I found the following conditions for ${patientName}: `;
             }
+            for (let i = 0; i < conditionTextArray.length; i+=1) {
+              if (i === conditionTextArray.length - 1 && conditionTextArray.length > 1) {
+                message += `and ${conditionTextArray[i]}`;
+              } else if (i === conditionTextArray.length - 1 && conditionTextArray.length === 1) {
+                message += conditionTextArray[i];
+              } else {
+                message += `${conditionTextArray[i]}, `;
+              }
+            }
+          } else {
+            message = `Good news! ${patientName} doesn't have any known conditions.`;
           }
+          console.log("Message response from Alexa to user, ", message);
+          this.response.speak(message);
+          this.emit(':responseReady');
         } else {
-          message = `Good news! ${patientName} doesn't have any known conditions.`;
+          this.response.speak(`Good news! ${patientName} doesn't have any known conditions.`);
+          this.emit(':responseReady');
         }
-        console.log("response, ", message);
-        this.response.speak(message);
-        this.emit(':responseReady');
-      } else {
-        this.response.speak(`Good news! ${patientName} doesn't have any known conditions.`);
-        this.emit(':responseReady');
-      }
-    });
+      });
+    }
+  },
+  'SessionEndedRequest' : function() {
+    console.log('Session ended with reason: ' + this.event.request.reason);
   },
   'AMAZON.HelpIntent': function () {
     const speechOutput = this.t('HELP_MESSAGE');
@@ -159,6 +162,10 @@ const defaultData = [
       { "value": "Timmy" }
     ]
   }
+];
+
+const REQUIRED_SLOTS = [
+  'person'
 ];
 
 // ***********************************
@@ -326,8 +333,8 @@ function disambiguateSlot() {
         console.log("NO MATCH FOR: ", currentSlot.name, " value: ", currentSlot.value);
 
         if (REQUIRED_SLOTS.indexOf(currentSlot.name) > -1) {
-          let prompt = "What " + currentSlot.name + " are you looking for";
-          this.emit(':elicitSlot', currentSlot.name, prompt, prompt);
+          console.log("DELEGATEDDDDDD");
+          this.emit(':delegate', currentSlot.name);
         }
       }
     }
@@ -375,9 +382,10 @@ function delegateSlotCollection(shouldFillSlotsWithTestData) {
   }
 }
 
-exports.handler = function (event, context) {
+exports.handler = function (event, context, callback) {
+  console.log("HIT THIS");
   const alexa = Alexa.handler(event, context);
-  alexa.APP_ID = appId;
+  alexa.APP_ID = 'amzn1.ask.skill.019ac3ee-c9df-4193-abe9-59b2000da8c5';
   alexa.registerHandlers(handlers);
   alexa.execute();
 };
