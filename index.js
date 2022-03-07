@@ -8,20 +8,24 @@
  * as testing instructions are located at https://github.com/alexa/skill-sample-nodejs-fact
  **/
 
-'use strict';
+// new thing
 
-const Alexa = require('alexa-sdk');
-const axios = require('axios');
+"use strict";
+
+const Alexa = require("alexa-sdk");
+const axios = require("axios");
 
 const handlers = {
-  'LaunchRequest': function () {
+  LaunchRequest: function () {
     console.log("in Launch Request");
-    this.response.speak('Welcome to Patient Conditions. I can give you a list of conditions for a patient from the ' +
-      'Cerner sandbox. Ask me for a list of conditions for a patient in the SMART family.');
-    this.response.listen('Say I want a list of conditions for Timmy');
-    this.emit(':responseReady');
+    this.response.speak(
+      "Welcome to Patient Conditions. I can give you a list of conditions for a patient from the " +
+        "Cerner sandbox. Ask me for a list of conditions for a patient in the SMART family."
+    );
+    this.response.listen("Say I want a list of conditions for Timmy");
+    this.emit(":responseReady");
   },
-  'ConditionsIntent': function () {
+  ConditionsIntent: function () {
     // delegate to Alexa to collect all the required slots
     let isTestingWithSimulator = false; //autofill slots when using simulator, dialog management is only supported with a device
     let filledSlots = delegateSlotCollection.call(this, isTestingWithSimulator);
@@ -44,41 +48,44 @@ const handlers = {
     let patientName;
     if (slotValues && slotValues.person) {
       switch (slotValues.person.resolved) {
-        case 'Connie':
-          patientId = '4342012';
-          patientName = 'Connie';
+        case "Connie":
+          patientId = "4342012";
+          patientName = "Connie";
           break;
-        case 'Hailey':
-          patientId = '4342011';
-          patientName = 'Hailey';
+        case "Hailey":
+          patientId = "4342011";
+          patientName = "Hailey";
           break;
-        case 'Joe':
-          patientId = '4342010';
-          patientName = 'Joe';
+        case "Joe":
+          patientId = "4342010";
+          patientName = "Joe";
           break;
-        case 'Nancy':
-          patientId = '4342009';
-          patientName = 'Nancy';
+        case "Nancy":
+          patientId = "4342009";
+          patientName = "Nancy";
           break;
-        case 'Wilma':
-          patientId = '4342008';
-          patientName = 'Wilma';
+        case "Wilma":
+          patientId = "4342008";
+          patientName = "Wilma";
           break;
-        case 'Timmy':
-          patientId = '4342012';
-          patientName = 'Timmy';
+        case "Timmy":
+          patientId = "4342012";
+          patientName = "Timmy";
           break;
         default:
-          return this.emit(':tell', 'Sorry, I dont know who that is. Try a different patient later.');
+          return this.emit(
+            ":tell",
+            "Sorry, I dont know who that is. Try a different patient later."
+          );
       }
 
       //Call the Cerner Ignite API
       axios({
-        method: 'get',
+        method: "get",
         url: `https://fhir-open.sandboxcerner.com/dstu2/0b8a0111-e8e6-4c26-a91c-5069cbc6b1ca/Condition?patient=${patientId}`,
         headers: {
-          'Accept': 'application/json+fhir'
-        }
+          Accept: "application/json+fhir",
+        },
       }).then((result) => {
         console.log(`FHIR Results for ${patientId}`, result);
         if (result.data && result.data.entry && result.data.entry.length) {
@@ -87,11 +94,18 @@ const handlers = {
           const conditionTextArray = [];
           data.filter((item) => {
             const resource = item.resource;
-            const hasAppropriateCode = resource && resource.code && resource.code.coding &&
-              resource.code.coding[0] && resource.code.coding[0].code;
-            const isVerified = resource && resource.verificationStatus === 'confirmed';
+            const hasAppropriateCode =
+              resource &&
+              resource.code &&
+              resource.code.coding &&
+              resource.code.coding[0] &&
+              resource.code.coding[0].code;
+            const isVerified =
+              resource && resource.verificationStatus === "confirmed";
             if (hasAppropriateCode && isVerified) {
-              const isDuplicate =  codeObjArray.indexOf(resource.code.coding[0].code);
+              const isDuplicate = codeObjArray.indexOf(
+                resource.code.coding[0].code
+              );
               if (isDuplicate < 0) {
                 codeObjArray.push(resource.code.coding[0].code);
                 if (!(conditionTextArray.length > 5)) {
@@ -104,17 +118,23 @@ const handlers = {
             return false;
           });
 
-          let message = '';
+          let message = "";
           if (conditionTextArray.length > 0) {
             if (conditionTextArray.length === 1) {
               message = `For ${patientName}, the only condition I found was `;
             } else {
               message = `I found the following conditions for ${patientName}: `;
             }
-            for (let i = 0; i < conditionTextArray.length; i+=1) {
-              if (i === conditionTextArray.length - 1 && conditionTextArray.length > 1) {
+            for (let i = 0; i < conditionTextArray.length; i += 1) {
+              if (
+                i === conditionTextArray.length - 1 &&
+                conditionTextArray.length > 1
+              ) {
                 message += `and ${conditionTextArray[i]}`;
-              } else if (i === conditionTextArray.length - 1 && conditionTextArray.length === 1) {
+              } else if (
+                i === conditionTextArray.length - 1 &&
+                conditionTextArray.length === 1
+              ) {
                 message += conditionTextArray[i];
               } else {
                 message += `${conditionTextArray[i]}, `;
@@ -125,27 +145,29 @@ const handlers = {
           }
           console.log("Message response from Alexa to user, ", message);
           this.response.speak(message);
-          this.emit(':responseReady');
+          this.emit(":responseReady");
         } else {
-          this.response.speak(`Good news! ${patientName} doesn't have any known conditions.`);
-          this.emit(':responseReady');
+          this.response.speak(
+            `Good news! ${patientName} doesn't have any known conditions.`
+          );
+          this.emit(":responseReady");
         }
       });
     }
   },
-  'SessionEndedRequest' : function() {
-    console.log('Session ended with reason: ' + this.event.request.reason);
+  SessionEndedRequest: function () {
+    console.log("Session ended with reason: " + this.event.request.reason);
   },
-  'AMAZON.HelpIntent': function () {
-    const speechOutput = this.t('HELP_MESSAGE');
-    const reprompt = this.t('HELP_MESSAGE');
-    this.emit(':ask', speechOutput, reprompt);
+  "AMAZON.HelpIntent": function () {
+    const speechOutput = this.t("HELP_MESSAGE");
+    const reprompt = this.t("HELP_MESSAGE");
+    this.emit(":ask", speechOutput, reprompt);
   },
-  'AMAZON.CancelIntent': function () {
-    this.emit(':tell', this.t('STOP_MESSAGE'));
+  "AMAZON.CancelIntent": function () {
+    this.emit(":tell", this.t("STOP_MESSAGE"));
   },
-  'AMAZON.StopIntent': function () {
-    this.emit(':tell', this.t('STOP_MESSAGE'));
+  "AMAZON.StopIntent": function () {
+    this.emit(":tell", this.t("STOP_MESSAGE"));
   },
 };
 
@@ -155,65 +177,66 @@ const handlers = {
 // Set isTestingWithSimulator to false to disable to default data
 const defaultData = [
   {
-    "name": "person",
-    "value": "timster",
-    "ERCode": "ER_SUCCESS_MATCH",
-    "ERValues": [
-      { "value": "Timmy" }
-    ]
-  }
+    name: "person",
+    value: "timster",
+    ERCode: "ER_SUCCESS_MATCH",
+    ERValues: [{ value: "Timmy" }],
+  },
 ];
 
-const REQUIRED_SLOTS = [
-  'person'
-];
+const REQUIRED_SLOTS = ["person"];
 
 // ***********************************
 // ** Dialog Management
 // ***********************************
 
-function getSlotValues (filledSlots) {
+function getSlotValues(filledSlots) {
   //given event.request.intent.slots, a slots values object so you have
   //what synonym the person said - .synonym
   //what that resolved to - .resolved
   //and if it's a word that is in your slot values - .isValidated
   let slotValues = {};
 
-  console.log('The filled slots: ' + JSON.stringify(filledSlots));
-  Object.keys(filledSlots).forEach(function(item) {
+  console.log("The filled slots: " + JSON.stringify(filledSlots));
+  Object.keys(filledSlots).forEach(function (item) {
     //console.log("item in filledSlots: "+JSON.stringify(filledSlots[item]));
     var name = filledSlots[item].name;
     //console.log("name: "+name);
-    if(filledSlots[item]&&
+    if (
+      filledSlots[item] &&
       filledSlots[item].resolutions &&
       filledSlots[item].resolutions.resolutionsPerAuthority[0] &&
       filledSlots[item].resolutions.resolutionsPerAuthority[0].status &&
-      filledSlots[item].resolutions.resolutionsPerAuthority[0].status.code ) {
-
-      switch (filledSlots[item].resolutions.resolutionsPerAuthority[0].status.code) {
+      filledSlots[item].resolutions.resolutionsPerAuthority[0].status.code
+    ) {
+      switch (
+        filledSlots[item].resolutions.resolutionsPerAuthority[0].status.code
+      ) {
         case "ER_SUCCESS_MATCH":
           slotValues[name] = {
-            "synonym": filledSlots[item].value,
-            "resolved": filledSlots[item].resolutions.resolutionsPerAuthority[0].values[0].value.name,
-            "isValidated": true
+            synonym: filledSlots[item].value,
+            resolved:
+              filledSlots[item].resolutions.resolutionsPerAuthority[0].values[0]
+                .value.name,
+            isValidated: true,
           };
           break;
         case "ER_SUCCESS_NO_MATCH":
           slotValues[name] = {
-            "synonym": filledSlots[item].value,
-            "resolved": filledSlots[item].value,
-            "isValidated":false
+            synonym: filledSlots[item].value,
+            resolved: filledSlots[item].value,
+            isValidated: false,
           };
           break;
       }
     } else {
       slotValues[name] = {
-        "synonym": filledSlots[item].value,
-        "resolved": filledSlots[item].value,
-        "isValidated": false
+        synonym: filledSlots[item].value,
+        resolved: filledSlots[item].value,
+        isValidated: false,
       };
     }
-  },this);
+  }, this);
   //console.log("slot values: "+JSON.stringify(slotValues));
   return slotValues;
 }
@@ -225,47 +248,47 @@ function fillSlotsWithTestData(testData) {
 
   //console.log("testData: "+JSON.stringify(testData));
   //loop through each item in testData
-  testData.forEach(function(item, index, arr) {
+  testData.forEach(function (item, index, arr) {
     //check to see if the slot exists
     //console.log("item: "+JSON.stringify(item));
     if (!this.event.request.intent.slots[item.name].value) {
       //fill with test data
       //construct the element
       let newSlot = {
-        "name": item.name,
-        "value": item.value,
-        "resolutions": {
-          "resolutionsPerAuthority": [
+        name: item.name,
+        value: item.value,
+        resolutions: {
+          resolutionsPerAuthority: [
             {
-              "authority": "",
-              "status": {
-                "code": item.ERCode,
+              authority: "",
+              status: {
+                code: item.ERCode,
               },
-            }
-          ]
+            },
+          ],
         },
-        "confirmationStatus": "CONFIRMED"
+        confirmationStatus: "CONFIRMED",
       };
 
       //add Entity resolution values
       if (item.ERCode == "ER_SUCCESS_MATCH") {
         let ERValuesArr = [];
-        item.ERValues.forEach(function(ERItem){
+        item.ERValues.forEach(function (ERItem) {
           let value = {
-            "value": {
-              "name": ERItem.value,
-              "id": ""
-            }
+            value: {
+              name: ERItem.value,
+              id: "",
+            },
           };
           ERValuesArr.push(value);
-        })
-        newSlot.resolutions.resolutionsPerAuthority[0].values=ERValuesArr;
+        });
+        newSlot.resolutions.resolutionsPerAuthority[0].values = ERValuesArr;
       }
 
       //add the new element to the response
-      this.event.request.intent.slots[item.name]=newSlot;
+      this.event.request.intent.slots[item.name] = newSlot;
     }
-  },this);
+  }, this);
 
   //console.log("leaving fillSlotsWithTestData");
   return this.event.request.intent.slots;
@@ -274,7 +297,6 @@ function fillSlotsWithTestData(testData) {
 // Given the request an slot name, slotHasValue returns the slot value if one
 // was given for `slotName`. Otherwise returns false.
 function slotHasValue(request, slotName) {
-
   let slot = request.intent.slots[slotName];
 
   //uncomment if you want to see the request
@@ -299,42 +321,61 @@ function slotHasValue(request, slotName) {
 function disambiguateSlot() {
   let currentIntent = this.event.request.intent;
 
-  Object.keys(this.event.request.intent.slots).forEach(function(slotName) {
+  Object.keys(this.event.request.intent.slots).forEach(function (slotName) {
     let currentSlot = this.event.request.intent.slots[slotName];
     let slotValue = slotHasValue(this.event.request, currentSlot.name);
-    if (currentSlot.confirmationStatus !== 'CONFIRMED' &&
+    if (
+      currentSlot.confirmationStatus !== "CONFIRMED" &&
       currentSlot.resolutions &&
-      currentSlot.resolutions.resolutionsPerAuthority[0]) {
-
-      if (currentSlot.resolutions.resolutionsPerAuthority[0].status.code == 'ER_SUCCESS_MATCH') {
+      currentSlot.resolutions.resolutionsPerAuthority[0]
+    ) {
+      if (
+        currentSlot.resolutions.resolutionsPerAuthority[0].status.code ==
+        "ER_SUCCESS_MATCH"
+      ) {
         // if there's more than one value that means we have a synonym that
         // mapped to more than one value. So we need to ask the user for
         // clarification. For example if the user said "mini dog", and
         // "mini" is a synonym for both "small" and "tiny" then ask "Did you
         // want a small or tiny dog?" to get the user to tell you
         // specifically what type mini dog (small mini or tiny mini).
-        if ( currentSlot.resolutions.resolutionsPerAuthority[0].values.length > 1 ) {
-          let prompt = 'Which patient do you want to want to see? ';
-          let size = currentSlot.resolutions.resolutionsPerAuthority[0].values.length;
-          currentSlot.resolutions.resolutionsPerAuthority[0].values.forEach(function(element, index, arr) {
-            prompt += ` ${(index == size -1) ? ' or' : ' '} ${element.value.name}`;
-          });
+        if (
+          currentSlot.resolutions.resolutionsPerAuthority[0].values.length > 1
+        ) {
+          let prompt = "Which patient do you want to want to see? ";
+          let size =
+            currentSlot.resolutions.resolutionsPerAuthority[0].values.length;
+          currentSlot.resolutions.resolutionsPerAuthority[0].values.forEach(
+            function (element, index, arr) {
+              prompt += ` ${index == size - 1 ? " or" : " "} ${
+                element.value.name
+              }`;
+            }
+          );
 
-          prompt += '?';
+          prompt += "?";
           let reprompt = prompt;
           // In this case we need to disambiguate the value that they
           // provided to us because it resolved to more than one thing so
           // we build up our prompts and then emit elicitSlot.
-          this.emit(':elicitSlot', currentSlot.name, prompt, reprompt);
+          this.emit(":elicitSlot", currentSlot.name, prompt, reprompt);
         }
-      } else if (currentSlot.resolutions.resolutionsPerAuthority[0].status.code == 'ER_SUCCESS_NO_MATCH') {
+      } else if (
+        currentSlot.resolutions.resolutionsPerAuthority[0].status.code ==
+        "ER_SUCCESS_NO_MATCH"
+      ) {
         // Here is where you'll want to add instrumentation to your code
         // so you can capture synonyms that you haven't defined.
-        console.log("NO MATCH FOR: ", currentSlot.name, " value: ", currentSlot.value);
+        console.log(
+          "NO MATCH FOR: ",
+          currentSlot.name,
+          " value: ",
+          currentSlot.value
+        );
 
         if (REQUIRED_SLOTS.indexOf(currentSlot.name) > -1) {
           console.log("DELEGATEDDDDDD");
-          this.emit(':delegate', currentSlot.name);
+          this.emit(":delegate", currentSlot.name);
         }
       }
     }
@@ -385,8 +426,7 @@ function delegateSlotCollection(shouldFillSlotsWithTestData) {
 exports.handler = function (event, context, callback) {
   console.log("HIT THIS");
   const alexa = Alexa.handler(event, context);
-  alexa.APP_ID = 'amzn1.ask.skill.019ac3ee-c9df-4193-abe9-59b2000da8c5';
+  alexa.APP_ID = "amzn1.ask.skill.019ac3ee-c9df-4193-abe9-59b2000da8c5";
   alexa.registerHandlers(handlers);
   alexa.execute();
 };
-
